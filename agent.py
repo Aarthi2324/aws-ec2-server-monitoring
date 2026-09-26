@@ -1,5 +1,3 @@
-
-
 import logging
 import os
 import time
@@ -11,7 +9,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
 )
 
-region = os.getenv("AWS_REGION", "ap-south-1")
+region = os.getenv("AWS_REGION", "ap-south-2")
 
 instance_ids = [
     instance_id.strip()
@@ -19,10 +17,19 @@ instance_ids = [
     if instance_id.strip()
 ]
 
-ec2 = boto3.client("ec2", region_name=region)
+logging.info("Starting EC2 monitoring agent")
+logging.info("Region: %s", region)
+logging.info("Instances: %s", instance_ids)
+
+ec2 = boto3.client(
+    "ec2",
+    region_name=region,
+)
 
 while True:
     try:
+        logging.info("Checking EC2 instances...")
+
         response = ec2.describe_instances(
             InstanceIds=instance_ids
         )
@@ -49,6 +56,12 @@ while True:
                 )
 
                 if state == "stopped":
+                    logging.warning(
+                        "%s (%s) is stopped. Starting instance...",
+                        name,
+                        instance_id,
+                    )
+
                     ec2.start_instances(
                         InstanceIds=[instance_id]
                     )
@@ -59,11 +72,11 @@ while True:
                         instance_id,
                     )
 
+        logging.info("EC2 monitoring check completed")
+
     except Exception:
         logging.exception(
             "Check failed; retrying"
         )
 
     time.sleep(10)
-
-
